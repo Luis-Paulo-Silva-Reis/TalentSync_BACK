@@ -1,35 +1,94 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using minimalwebapi.Classes;
+using minimalwebapi.models;
 using MongoDB.Bson;
 using MongoDB.Driver;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace minimalwebapi.Controllers
+namespace jobs.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
-    public class JobController : ControllerBase
+    [Route("[controller]")]
+    public class JobsController : ControllerBase
     {
-        private readonly JobService _jobService;
+        private readonly IMongoCollection<JobModel> _collection;
 
-        public JobController(JobService jobService)
+        public JobsController(DbConnection db)
         {
-            _jobService = jobService;
+            _collection = db.GetCollection<JobModel>("jobs");
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAllJobs()
+        public async Task<IActionResult> GetJobs()
         {
-            var jobs = await _jobService.GetAllJobs();
+            var jobs = await _collection.Find(_ => true).ToListAsync();
             return Ok(jobs);
         }
 
-        [HttpGet("usuarios")]
-        public IActionResult GetUsuarios()
+        [HttpGet("{id:length(24)}", Name = "GetJob")]
+        public async Task<IActionResult> GetJobById(string id)
         {
-            return Ok("Hello usuarios");
+            var job = await _collection.Find(j => j.id == id).FirstOrDefaultAsync();
+            if (job == null)
+            {
+                return NotFound();
+            }
+            return Ok(job);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> CreateJob(JobModel job)
+        {
+            job.id = null; // Ensure the id is null to let MongoDB generate it
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            await _collection.InsertOneAsync(job);
+            return CreatedAtAction(nameof(GetJobById), new { id = job.id }, job);
+        }
+
+
+
+
+
+        [HttpPut("{id:length(24)}")]
+        public async Task<IActionResult> UpdateJob(string id, JobModel job)
+        {
+
+            job.id = null; // Ensure the id is null to let MongoDB generate it
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if (id != job.id)
+            {
+                return BadRequest();
+            }
+
+            var updatedJob = await _collection.FindOneAndReplaceAsync(j => j.id == id, job);
+            if (updatedJob == null)
+            {
+                return NotFound();
+            }
+
+            return NoContent();
+        }
+
+        [HttpDelete("{id:length(24)}")]
+        public async Task<IActionResult> DeleteJob(string id)
+        {
+            var result = await _collection.DeleteOneAsync(j => j.id == id);
+            if (result.DeletedCount == 0)
+            {
+                return NotFound();
+            }
+            return NoContent();
         }
     }
 }

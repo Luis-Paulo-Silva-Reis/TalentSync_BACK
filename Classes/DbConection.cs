@@ -19,6 +19,7 @@ namespace minimalwebapi.Classes
         {
             return _database.GetCollection<T>(collectionName);
         }
+
     }
 }
 
