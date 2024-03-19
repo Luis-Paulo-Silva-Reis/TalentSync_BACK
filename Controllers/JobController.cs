@@ -1,10 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using minimalwebapi.Classes;
-using minimalwebapi.models;
-using MongoDB.Bson;
+using minimalwebapi.models.JobModel;
 using MongoDB.Driver;
-using System.Linq;
-using System.Threading.Tasks;
+
 
 namespace jobs.Controllers
 {
@@ -40,8 +38,6 @@ namespace jobs.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateJob(JobModel job)
         {
-            job.id = null; // Ensure the id is null to let MongoDB generate it
-
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
@@ -55,17 +51,10 @@ namespace jobs.Controllers
 
 
 
-        [HttpPut("{id:length(24)}")]
+
+        [HttpPut("{id}")]
         public async Task<IActionResult> UpdateJob(string id, JobModel job)
         {
-
-            job.id = null; // Ensure the id is null to let MongoDB generate it
-
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
             if (id != job.id)
             {
                 return BadRequest();
@@ -79,6 +68,7 @@ namespace jobs.Controllers
 
             return NoContent();
         }
+
 
         [HttpDelete("{id:length(24)}")]
         public async Task<IActionResult> DeleteJob(string id)
