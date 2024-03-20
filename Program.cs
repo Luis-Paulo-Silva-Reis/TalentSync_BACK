@@ -1,3 +1,5 @@
+using FluentAssertions.Common;
+using minimalwebapi.Authentication;
 using minimalwebapi.Classes;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -11,6 +13,8 @@ builder.Services.AddSingleton<DbConnection>(sp =>
     return new DbConnection("mongodb+srv://lpreis:mgdhcz8dt@talentsync.iwpm9dp.mongodb.net/?retryWrites=true&w=majority&appName=talentSync", "talentSync");
 });
 builder.Services.ConfigureCors();
+builder.Services.AddSingleton<JwtTokenService>();
+
 
 var app = builder.Build();
 
@@ -26,6 +30,7 @@ app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseRouting();
+
 app.UseCors("CorsPolicy");
 app.UseAuthorization();
 

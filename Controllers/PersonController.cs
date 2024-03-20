@@ -1,7 +1,13 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
 using minimalwebapi.Classes;
 using minimalwebapi.models.PersonModel;
 using MongoDB.Driver;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
 
 
 namespace Person.Controllers
@@ -11,6 +17,8 @@ namespace Person.Controllers
     public class PersonsController : ControllerBase
     {
         private readonly IMongoCollection<PersonModel> _collection;
+        private readonly IMongoCollection<PersonModel> _usersCollection;
+        private readonly IConfiguration _configuration;
 
         public PersonsController(DbConnection db)
         {
@@ -35,18 +43,36 @@ namespace Person.Controllers
             return Ok(person);
         }
 
-        [HttpPost]
-        public async Task<IActionResult> CreatePerson(PersonModel person)
+        [HttpPost("create")]
+        public async Task<IActionResult> CreateUser(PersonModel user)
         {
-          
-
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            await _collection.InsertOneAsync(person);
-            return CreatedAtAction(nameof(GetPersonById), new { id = person.id }, person);
+            await _usersCollection.InsertOneAsync(user);
+            var token = GenerateJwtToken(user);
+            return Ok(new { user, token });
+        }
+
+        private string GenerateJwtToken(PersonModel user)
+        {
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"]);
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(new Claim[]
+                {
+                    new Claim(ClaimTypes.Name, user.Nome),
+                    // Add other required claims as needed
+                }),
+                Expires = DateTime.UtcNow.AddDays(7),
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            };
+
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            return tokenHandler.WriteToken(token);
         }
 
         [HttpPut("{id}")]
@@ -76,5 +102,7 @@ namespace Person.Controllers
             }
             return NoContent();
         }
+
+
     }
 }

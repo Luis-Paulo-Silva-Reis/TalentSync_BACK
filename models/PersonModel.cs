@@ -1,6 +1,7 @@
 ﻿
-using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
+using Org.BouncyCastle.Crypto.Generators;
 using System.Globalization;
 
 namespace minimalwebapi.models.PersonModel
@@ -12,10 +13,8 @@ namespace minimalwebapi.models.PersonModel
         public string id { get; set; }
         public string Nome { get; set; }
         public string Sobrenome { get; set; }
-
         [BsonElement("Data_nascimento")]
         public string DateOfBirthString { get; set; }
-
         // Property to store the parsed date
         [BsonIgnore] // Ignore this property during MongoDB serialization/deserialization
         public DateTime DateOfBirth { get; set; }
@@ -49,10 +48,32 @@ namespace minimalwebapi.models.PersonModel
         }
     }
 
+    public class PersonCredential
+    {
+        [BsonId]
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string id { get; set; }
+        public string PersonId { get; set; }
+        public string HashedPassword { get; set; }
 
 
-  
+        [BsonIgnore]
+        public string Password { get; set; }
 
+        public void HashPassword()
+        {
+            if (!string.IsNullOrEmpty(Password))
+            {
+                // Hash the password
+                Password = BCrypt.Net.BCrypt.HashPassword(Password);
+            }
+        }
 
-
+        public bool VerifyPassword(string password)
+        {
+            return BCrypt.Net.BCrypt.Verify(password, Password);
+        }
+    }
 }
+
+

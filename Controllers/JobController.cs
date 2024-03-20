@@ -47,11 +47,6 @@ namespace jobs.Controllers
             return CreatedAtAction(nameof(GetJobById), new { id = job.id }, job);
         }
 
-
-
-
-
-
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateJob(string id, JobModel job)
         {
