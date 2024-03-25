@@ -14,16 +14,11 @@ namespace Person.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class PersonsController : ControllerBase
+    public class PersonsController(DbConnection db) : ControllerBase
     {
-        private readonly IMongoCollection<PersonModel> _collection;
+        private readonly IMongoCollection<PersonModel> _collection = db.GetCollection<PersonModel>("user");
         private readonly IMongoCollection<PersonModel> _usersCollection;
         private readonly IConfiguration _configuration;
-
-        public PersonsController(DbConnection db)
-        {
-            _collection = db.GetCollection<PersonModel>("user");
-        }
 
         [HttpGet]
         public async Task<IActionResult> GetPersons()
@@ -35,7 +30,7 @@ namespace Person.Controllers
         [HttpGet("{id:length(24)}", Name = "GetPerson")]
         public async Task<IActionResult> GetPersonById(string id)
         {
-            var person = await _collection.Find(p => p.id == id).FirstOrDefaultAsync();
+            var person = await _collection.Find(p => p.Id == id).FirstOrDefaultAsync();
             if (person == null)
             {
                 return NotFound();
@@ -59,12 +54,12 @@ namespace Person.Controllers
         private string GenerateJwtToken(PersonModel user)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"]);
+            byte[] key = Encoding.ASCII.GetBytes(s: _configuration["Jwt:Key"]);
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new Claim[]
                 {
-                    new Claim(ClaimTypes.Name, user.Nome),
+                    new(ClaimTypes.Name, user.Nome),
                     // Add other required claims as needed
                 }),
                 Expires = DateTime.UtcNow.AddDays(7),
@@ -78,12 +73,12 @@ namespace Person.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdatePerson(string id, PersonModel person)
         {
-            if (id != person.id)
+            if (id != person.Id)
             {
                 return BadRequest();
             }
 
-            var updatedPerson = await _collection.FindOneAndReplaceAsync(p => p.id == id, person);
+            var updatedPerson = await _collection.FindOneAndReplaceAsync(p => p.Id == id, person);
             if (updatedPerson == null)
             {
                 return NotFound();
@@ -95,7 +90,7 @@ namespace Person.Controllers
         [HttpDelete("{id:length(24)}")]
         public async Task<IActionResult> DeletePerson(string id)
         {
-            var result = await _collection.DeleteOneAsync(p => p.id == id);
+            var result = await _collection.DeleteOneAsync(p => p.Id == id);
             if (result.DeletedCount == 0)
             {
                 return NotFound();

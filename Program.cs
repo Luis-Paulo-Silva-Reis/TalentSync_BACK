@@ -1,39 +1,19 @@
-using FluentAssertions.Common;
-using minimalwebapi.Authentication;
-using minimalwebapi.Classes;
+//program.cs
 
-var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-builder.Services.AddSingleton<DbConnection>(sp =>
+namespace minimalwebapi
 {
-    return new DbConnection("mongodb+srv://lpreis:mgdhcz8dt@talentsync.iwpm9dp.mongodb.net/?retryWrites=true&w=majority&appName=talentSync", "talentSync");
-});
-builder.Services.ConfigureCors();
-builder.Services.AddSingleton<JwtTokenService>();
+    public class Program
+    {
+        public static void Main(string[] args)
+        {
+            CreateHostBuilder(args).Build().Run();
+        }
 
-
-var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment())
-{
-    app.UseExceptionHandler("/error");
-    app.UseHsts();
+        public static IHostBuilder CreateHostBuilder(string[] args) =>
+            Host.CreateDefaultBuilder(args)
+                .ConfigureWebHostDefaults(webBuilder =>
+                {
+                    webBuilder.UseStartup<Startup>();
+                });
+    }
 }
-
-app.UseHttpsRedirection();
-app.UseSwagger();
-app.UseSwaggerUI();
-
-app.UseRouting();
-
-app.UseCors("CorsPolicy");
-app.UseAuthorization();
-
-app.MapControllers(); 
-
-app.Run();

@@ -8,14 +8,9 @@ namespace jobs.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class JobsController : ControllerBase
+    public class JobsController(DbConnection db) : ControllerBase
     {
-        private readonly IMongoCollection<JobModel> _collection;
-
-        public JobsController(DbConnection db)
-        {
-            _collection = db.GetCollection<JobModel>("jobs");
-        }
+        private readonly IMongoCollection<JobModel> _collection = db.GetCollection<JobModel>("jobs");
 
         [HttpGet]
         public async Task<IActionResult> GetJobs()
@@ -27,7 +22,7 @@ namespace jobs.Controllers
         [HttpGet("{id:length(24)}", Name = "GetJob")]
         public async Task<IActionResult> GetJobById(string id)
         {
-            var job = await _collection.Find(j => j.id == id).FirstOrDefaultAsync();
+            var job = await _collection.Find(j => j.Id == id).FirstOrDefaultAsync();
             if (job == null)
             {
                 return NotFound();
@@ -44,18 +39,18 @@ namespace jobs.Controllers
             }
 
             await _collection.InsertOneAsync(job);
-            return CreatedAtAction(nameof(GetJobById), new { id = job.id }, job);
+            return CreatedAtAction(nameof(GetJobById), new { job.Id }, job);
         }
 
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateJob(string id, JobModel job)
         {
-            if (id != job.id)
+            if (id != job.Id)
             {
                 return BadRequest();
             }
 
-            var updatedJob = await _collection.FindOneAndReplaceAsync(j => j.id == id, job);
+            var updatedJob = await _collection.FindOneAndReplaceAsync(j => j.Id == id, job);
             if (updatedJob == null)
             {
                 return NotFound();
@@ -68,7 +63,7 @@ namespace jobs.Controllers
         [HttpDelete("{id:length(24)}")]
         public async Task<IActionResult> DeleteJob(string id)
         {
-            var result = await _collection.DeleteOneAsync(j => j.id == id);
+            var result = await _collection.DeleteOneAsync(j => j.Id == id);
             if (result.DeletedCount == 0)
             {
                 return NotFound();

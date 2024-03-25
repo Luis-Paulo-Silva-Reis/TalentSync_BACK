@@ -7,7 +7,7 @@ namespace minimalwebapi.models.JobModel
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
-        public string id { get; set; }
+        public required string Id { get; set; }
         public string Profissao { get; set; }
         public string Tipo { get; set; }
         public string Level { get; set; }
