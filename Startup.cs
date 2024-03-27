@@ -1,7 +1,9 @@
-﻿//Startup.cs
-using DotNetEnv;
+﻿using DotNetEnv;
 using minimalwebapi.Authentication;
 using minimalwebapi.Classes;
+using validators.userValidator;
+using MongoDB.Driver;
+using minimalwebapi.models.PersonModel;
 
 namespace minimalwebapi
 {
@@ -20,12 +22,39 @@ namespace minimalwebapi
             services.AddControllers();
             services.AddEndpointsApiExplorer();
             services.AddSwaggerGen();
+
+            services.AddSingleton<IMongoClient>(sp =>
+            {
+                var connectionString = Environment.GetEnvironmentVariable("DB_StringConnection") ?? Configuration["MongoDB:ConnectionString"];
+                if (string.IsNullOrEmpty(connectionString))
+                {
+                    throw new InvalidOperationException("MongoDB connection string is not configured.");
+                }
+                return new MongoClient(connectionString);
+            });
+
+            // Register MongoDB database
             services.AddSingleton(sp =>
             {
-                return new DbConnection("mongodb+srv://lpreis:mgdhcz8dt@talentsync.iwpm9dp.mongodb.net/?retryWrites=true&w=majority&appName=talentSync", "talentSync");
+                var client = sp.GetRequiredService<IMongoClient>();
+                var dbName = Environment.GetEnvironmentVariable("DB_Collection") ?? Configuration["MongoDB:DatabaseName"];
+                if (string.IsNullOrEmpty(dbName))
+                {
+                    throw new InvalidOperationException("MongoDB database name is not configured.");
+                }
+                return client.GetDatabase(dbName);
             });
-            services.ConfigureCors();
+
+            // Register IMongoCollection for PersonModel
+            services.AddScoped(sp =>
+            {
+                var database = sp.GetRequiredService<IMongoDatabase>();
+                return database.GetCollection<PersonModel>("user");
+            });
+
+            services.AddScoped<ValidationService>();
             services.AddSingleton<JwtTokenService>();
+            services.ConfigureCors();
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILogger<Startup> logger)
@@ -51,13 +80,8 @@ namespace minimalwebapi
                 endpoints.MapControllers();
             });
 
-            // Use logger here
-            var jwtIssuer = Configuration["Jwt:Issuer"]; //o problema e aqui
-            string message = $"Jwt:Issuer from appsettings: {jwtIssuer}";
-            logger.LogInformation(message: "loguei ");
-            Console.WriteLine(jwtIssuer);
-            Console.WriteLine(message);
-            Console.WriteLine("tem alguem ai ?");
+            var jwtIssuer = Configuration["Jwt:Issuer"];
+            logger.LogInformation($"Jwt:Issuer from appsettings: {jwtIssuer}");
         }
     }
 }

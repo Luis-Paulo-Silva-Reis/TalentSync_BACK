@@ -8,17 +8,29 @@ using System.Security.Claims;
 using System.Text;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using System.Text.RegularExpressions;
+using validators.userValidator;
 
 
 namespace Person.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class PersonsController(DbConnection db) : ControllerBase
+    public class PersonsController : ControllerBase
     {
-        private readonly IMongoCollection<PersonModel> _collection = db.GetCollection<PersonModel>("user");
-        private readonly IMongoCollection<PersonModel> _usersCollection;
+        private readonly IMongoCollection<PersonModel> _collection;
         private readonly IConfiguration _configuration;
+        private readonly ValidationService _validationService;
+
+        public PersonsController(
+            IMongoCollection<PersonModel> collection,
+            IConfiguration configuration,
+            ValidationService validationService)
+        {
+            _collection = collection;
+            _configuration = configuration;
+            _validationService = validationService;
+        }
 
         [HttpGet]
         public async Task<IActionResult> GetPersons()
@@ -39,36 +51,41 @@ namespace Person.Controllers
         }
 
         [HttpPost("create")]
-        public async Task<IActionResult> CreateUser(PersonModel user)
+        public async Task<IActionResult> CreatePerson(PersonModel person)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            await _usersCollection.InsertOneAsync(user);
-            var token = GenerateJwtToken(user);
-            return Ok(new { user, token });
-        }
-
-        private string GenerateJwtToken(PersonModel user)
-        {
-            var tokenHandler = new JwtSecurityTokenHandler();
-            byte[] key = Encoding.ASCII.GetBytes(s: _configuration["Jwt:Key"]);
-            var tokenDescriptor = new SecurityTokenDescriptor
+            // Email validation
+            if (!Regex.IsMatch(person.Email, @"^\w+([-+.']\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$"))
             {
-                Subject = new ClaimsIdentity(new Claim[]
-                {
-                    new(ClaimTypes.Name, user.Nome),
-                    // Add other required claims as needed
-                }),
-                Expires = DateTime.UtcNow.AddDays(7),
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-            };
+                return BadRequest("Invalid email format.");
+            }
 
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-            return tokenHandler.WriteToken(token);
+            // CPF validation
+            if (!_validationService.IsValidCPF(person.CPF) || await _validationService.CPFExists(person.CPF))
+            {
+                return BadRequest("Invalid or existing CPF.");
+            }
+
+            // Email validation
+            if (await _validationService.EmailExists(person.Email))
+            {
+                return BadRequest("existing Email.");
+            }
+
+            // ID generation
+            if (string.IsNullOrWhiteSpace(person.Id) || !ObjectId.TryParse(person.Id, out _))
+            {
+                person.Id = ObjectId.GenerateNewId().ToString();
+            }
+
+            await _collection.InsertOneAsync(person);
+            return CreatedAtAction(nameof(GetPersonById), new { id = person.Id }, person);
         }
+
 
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdatePerson(string id, PersonModel person)

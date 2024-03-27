@@ -14,7 +14,7 @@ namespace minimalwebapi.models.PersonModel
         public required string Nome { get; set; }
         public required string Sobrenome { get; set; }
         [BsonElement("Data_nascimento")]
-        public string DateOfBirthString { get; set; }
+        public required string DateOfBirthString { get; set; }
         // Property to store the parsed date
         [BsonIgnore] // Ignore this property during MongoDB serialization/deserialization
         public DateTime DateOfBirth { get; set; }
@@ -58,7 +58,7 @@ namespace minimalwebapi.models.PersonModel
 
 
         [BsonIgnore]
-        public string Password { get; set; }
+        public required string Password { get; set; }
 
         public void HashPassword()
         {
